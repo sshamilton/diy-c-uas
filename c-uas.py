@@ -1,4 +1,6 @@
 #!/usr/bin/python3
+import logging
+import argparse
 
 
 def init():
@@ -6,8 +8,36 @@ def init():
     Initialization: checks for the presence of necessary tools and configures
     the logging environment.
     """
-    pass
+    # Setup command line
+    # Reference: https://docs.python.org/3/howto/argparse.html#argparse-tutorial # noqa: E501
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-v", "--verbose", help="increase output verbosity",
+                        action="store_true")
+    parser.add_argument("-o", "--output", help="save logs to file")
+    args = parser.parse_args()
 
+    # Setup logging
+    # Reference: https://docs.python.org/2/howto/logging-cookbook.html#multiple-handlers-and-formatters # noqa: E501
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+
+    # Command line output
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    ch.setFormatter(logging.Formatter('%(levelname)-8s: %(message)s'))
+    logger.addHandler(ch)
+
+    if args.verbose:
+        ch.setLevel(logging.DEBUG)
+
+    if args.output is not None:
+        # Log to file too
+        fh = logging.FileHandler(args.output)
+        formatter = logging.Formatter('%(asctime)s,%(levelname)s,%(message)s')
+        fh.setFormatter(formatter)
+        fh.setLevel(logging.DEBUG)
+        logger.addHandler(fh)
+        logging.debug("started logging to file")
 
 def scan():
     """
@@ -54,7 +84,9 @@ def main():
     4. Target refinement - gain additional target information (channel)
     5. DeAuth Targets
     """
-    print("hello")
+
+    init()
+    logging.info("Started Counter-UAS script")
 
 
 if __name__ == "__main__":
