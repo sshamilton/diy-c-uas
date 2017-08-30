@@ -39,39 +39,47 @@ def init():
         logger.addHandler(fh)
         logging.debug("started logging to file")
 
+
 def scan():
     """
     Scan: Runs airodump-ng to characterize the environment.
     Returns: [string] containing the detected MAC addresses
     """
-    pass
+    logging.debug("started scan")
+    return []
 
 
-def select_targets():
+def select_targets(networks):
     """
     Target Selection: Compares a list of observed MAC addresses against MAC
     addresses identified as belonging to sUAS systems.
     Input: [string] containing MAC addresses from scan
     Returns: [string] containing target MAC addresses
     """
-    pass
+    logging.debug("select targets from")
+    logging.debug(networks)
+    return []
 
 
-def refine_targets():
+def refine_targets(networks):
     """
     Target Refinement: Performs additional scans to gain the required
     information necessary to perform the attack such as the active channel.
     Input: [string] containing observed target MAC addresses
     Returns: [(string,int)] with the (MAC,channel) of each target
     """
-    pass
+    logging.debug("refine targets")
+    logging.debug(networks)
+    return []
 
 
-def deauth_targets():
+def deauth_targets(attack_pairs):
     """
     Detauth Targets: Performs a replay attack against the listed targets
     Input: [(string,int)] with the (MAC,channel) to target
     """
+    logging.debug("deauth targets")
+    logging.debug(attack_pairs)
     pass
 
 
@@ -87,6 +95,14 @@ def main():
 
     init()
     logging.info("Started Counter-UAS script")
+
+    #while True:
+    for i in range(2):
+        networks = scan()
+        targets = select_targets(networks)
+        if len(targets) > 0:
+            attack_pairs = refine_targets(targets)
+            deauth_targets(attack_pairs)
 
 
 if __name__ == "__main__":
