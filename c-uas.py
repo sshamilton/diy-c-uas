@@ -1,13 +1,15 @@
 #!/usr/bin/python3
 import logging
 import argparse
-
+from netdevdb import NetdevDb #Abstraction layer for db connectivity
+from pyrcrack.scanning import Airodump
 
 def init():
     """
     Initialization: checks for the presence of necessary tools and configures
-    the logging environment.
+    the logging environment.  Creates/Connects to database.
     """
+
     # Setup command line
     # Reference: https://docs.python.org/3/howto/argparse.html#argparse-tutorial # noqa: E501
     parser = argparse.ArgumentParser()
@@ -39,13 +41,24 @@ def init():
         logger.addHandler(fh)
         logging.debug("started logging to file")
 
-
-def scan():
+def scan(netdb):
     """
     Scan: Runs airodump-ng to characterize the environment.
     Returns: [string] containing the detected MAC addresses
     """
+    # Setup the wireless interface to listen on
+    interface = 'wlp3s0' #Change this for the pi to something like wlan0
     logging.debug("started scan")
+    wifi = Airodump(interface)
+    wifi.start()
+    scanres = wifi.tree
+
+    #Now add access points to db
+    for bssid in wifi.tree:
+        netdb.adddevice(bssid, wifi.tree[bssid]['ESSID'], wifi.tree[bssid]['Power'], 
+            wifi.tree[bssid]['channel'], wifi.tree[bssid]['Privacy'])
+        netdb.addlocation(bssid, 34.1, -74.1) #Get GPS coordinates.  This is a placeholder.        
+    
     return []
 
 
@@ -96,9 +109,14 @@ def main():
     init()
     logging.info("Started Counter-UAS script")
 
+    #Setup database
+    netdb = NetdevDb("c-uas") #Change this to the db name you wish to save things to.
+
     #while True:
     for i in range(2):
-        networks = scan()
+        networks = scan(netdb)
+        print ("scan complete")
+        netdb.deviceswithlocations() #Show what was scanned
         targets = select_targets(networks)
         if len(targets) > 0:
             attack_pairs = refine_targets(targets)

@@ -23,6 +23,7 @@ class NetdevDb:
             c.execute('''CREATE TABLE locations 
                 (bssid character(12), latitude float, longitude float, created_at int)''')
             c.execute('''CREATE TABLE enctypes (id int PRIMARY KEY, name varchar(50))''')
+            c.execute('''CREATE TABLE blacklist (bssid character(12))''')
             self.conn.commit()
             c.execute("INSERT INTO enctypes VALUES('1', 'None')")
             c.execute("INSERT INTO enctypes VALUES('2', 'WPA')")
@@ -50,6 +51,7 @@ class NetdevDb:
             print("ESSID too long.")
             return 1
         p = int(power)
+        
         ch = int(channel)
         if (encryption == "None"):
             enctype = 1
@@ -59,6 +61,9 @@ class NetdevDb:
             enctype = 3
         elif (encryption == "WEP"):
             enctype = 4
+        else:
+            enctype = 0 #Default if none of the above
+            print ("Warning undefined enc: ", encryption)
         #Check if bssid exists
         c = self.conn.cursor()
         c.execute("SELECT * from netdevices WHERE bssid = '" + b +"'")
@@ -93,5 +98,5 @@ class NetdevDb:
             "WHERE netdevices.bssid = locations.bssid "
             "AND netdevices.enc_type = enctypes.id")
         for row in c.fetchall():
-            print row
+            print (row)
 
