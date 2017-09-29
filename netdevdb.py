@@ -23,7 +23,7 @@ class NetdevDb:
             c.execute('''CREATE TABLE locations 
                 (bssid character(12), latitude float, longitude float, created_at int)''')
             c.execute('''CREATE TABLE enctypes (id int PRIMARY KEY, name varchar(50))''')
-            c.execute('''CREATE TABLE blacklist (bssid character(12))''')
+            c.execute('''CREATE TABLE blacklist (bssid character(12), created_at int)''')
             self.conn.commit()
             c.execute("INSERT INTO enctypes VALUES('1', 'None')")
             c.execute("INSERT INTO enctypes VALUES('2', 'WPA')")
@@ -74,6 +74,7 @@ class NetdevDb:
             c.execute("INSERT INTO netdevices(bssid, essid, power, channel, enc_type, created_at) VALUES('" + b + "', '" + e + "', " + str(p) + ", " + str(ch) + ", " + str(enctype) + ", " + str(currenttime) + ")")
             self.conn.commit() 
             return 0
+  
 
     def addlocation(self, bssid, latitude, longitude):
         #Should we validate the BSSID exists in netdev? 
@@ -87,6 +88,20 @@ class NetdevDb:
             return 1 
         c = self.conn.cursor()
         c.execute("INSERT INTO locations(bssid, latitude, longitude, created_at) VALUES('" + b + "', " + str(latitude) + ", " + str(longitude) + ", " + str(currenttime) + ")")
+        self.conn.commit()
+        return 0
+  
+
+    def blacklist(self, bssid):
+        currenttime = self.unixtime(datetime.datetime.now())
+        if (len(bssid) == 17):
+            #Strip out colons
+            b = bssid.replace(":","")
+        else:
+            print("BSSID incorrect")
+            return 1
+        c = self.conn.cursor()
+        c.execute("INSERT INTO blacklist(bssid, created_at) VALUES('" + b + "', " + str(currenttime) + ")")
         self.conn.commit()
         return 0
 

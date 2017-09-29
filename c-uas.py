@@ -3,6 +3,7 @@ import logging
 import argparse
 from netdevdb import NetdevDb #Abstraction layer for db connectivity
 from pyrcrack.scanning import Airodump
+import serial # For GPS
 
 def init():
     """
@@ -95,7 +96,12 @@ def deauth_targets(attack_pairs):
     logging.debug(attack_pairs)
     pass
 
-
+    def getlocation(self, gpsdevice): #Pass in gps interface
+        #Get current location and return it as a key pair
+        ser = serial.Serial()
+        ser.port = gpsdevice
+        ser.open()
+        
 def main():
     """
     Main entry point for the script, orchestrates the following actions.
