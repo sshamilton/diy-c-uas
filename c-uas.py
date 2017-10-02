@@ -1,9 +1,11 @@
 #!/usr/bin/python3
 import logging
 import argparse
+import time
 from netdevdb import NetdevDb #Abstraction layer for db connectivity
 from pyrcrack.scanning import Airodump
 import serial # For GPS
+from pynmea import nmea
 
 def init():
     """
@@ -53,12 +55,15 @@ def scan(netdb):
     wifi = Airodump(interface)
     wifi.start()
     scanres = wifi.tree
-
+    logging.debug("Got tree")
     #Now add access points to db
+    #Get gps data
+    gpsdata = getlocation('/dev/ttyUSB0') #Change this to the GPS port
+
     for bssid in wifi.tree:
         netdb.adddevice(bssid, wifi.tree[bssid]['ESSID'], wifi.tree[bssid]['Power'], 
             wifi.tree[bssid]['channel'], wifi.tree[bssid]['Privacy'])
-        netdb.addlocation(bssid, 34.1, -74.1) #Get GPS coordinates.  This is a placeholder.        
+        netdb.addlocation(bssid, gpsdata) #Get GPS coordinates.  This is a placeholder.        
     
     return []
 
@@ -96,12 +101,27 @@ def deauth_targets(attack_pairs):
     logging.debug(attack_pairs)
     pass
 
-    def getlocation(self, gpsdevice): #Pass in gps interface
-        #Get current location and return it as a key pair
-        ser = serial.Serial()
-        ser.port = gpsdevice
-        ser.open()
-        
+def getlocation(gpsdevice): #Pass in gps interface
+    #Get current location and return it as a key pair
+    ser = serial.Serial()
+    ser.port = gpsdevice
+    ser.baudrate = 4800
+    ser.open()
+    logging.debug("Getting GPS Location")
+    gotlocation = False
+    while (gotlocation == False):
+        gpstext = str(ser.readline())
+        if (gpstext[3:8] == 'GPGGA'):
+            #Found the proper string, now get the lat long
+            #Probably needs a check for GPS lock.
+            gotlocation = True
+            g = nmea.GPGGA()
+            g.parse(gpstext)
+            gpsdata = {'latitude':g.latitude, 'longitude': g.longitude, 'timestamp':g.timestamp, 'altitude':g.antenna_altitude}
+        else:
+            print("GPS Text was: " + gpstext[3:8])
+    return gpsdata
+
 def main():
     """
     Main entry point for the script, orchestrates the following actions.
@@ -122,11 +142,13 @@ def main():
     for i in range(2):
         networks = scan(netdb)
         print ("scan complete")
+        
         netdb.deviceswithlocations() #Show what was scanned
-        targets = select_targets(networks)
-        if len(targets) > 0:
-            attack_pairs = refine_targets(targets)
-            deauth_targets(attack_pairs)
+        time.sleep(15)
+        #targets = select_targets(networks)
+        #if len(targets) > 0:
+        #    attack_pairs = refine_targets(targets)
+        #    deauth_targets(attack_pairs)
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ class NetdevDb:
                 (bssid character(12), essid varchar(255), 
                 power int, channel int, enc_type int, created_at int)''')
             c.execute('''CREATE TABLE locations 
-                (bssid character(12), latitude float, longitude float, created_at int)''')
+                (bssid character(12), latitude float, longitude float, altitude float, created_at int)''')
             c.execute('''CREATE TABLE enctypes (id int PRIMARY KEY, name varchar(50))''')
             c.execute('''CREATE TABLE blacklist (bssid character(12), created_at int)''')
             self.conn.commit()
@@ -76,10 +76,10 @@ class NetdevDb:
             return 0
   
 
-    def addlocation(self, bssid, latitude, longitude):
+    def addlocation(self, bssid, gpsdata):
         #Should we validate the BSSID exists in netdev? 
         #Should we only insert if location is significantly different?
-        currenttime = self.unixtime(datetime.datetime.now())
+        #currenttime = self.unixtime(datetime.datetime.now())  #use gps time now.
         if (len(bssid) == 17):
             #Strip out colons
             b = bssid.replace(":","")
@@ -87,7 +87,7 @@ class NetdevDb:
             print("BSSID incorrect")
             return 1 
         c = self.conn.cursor()
-        c.execute("INSERT INTO locations(bssid, latitude, longitude, created_at) VALUES('" + b + "', " + str(latitude) + ", " + str(longitude) + ", " + str(currenttime) + ")")
+        c.execute("INSERT INTO locations(bssid, latitude, longitude, altitude, created_at) VALUES('" + b + "', " + str(gpsdata['latitude']) + ", " + str(gpsdata['longitude']) + ", " + str(gpsdata['altitude']) + ", " + gpsdata['timestamp'] + ")")
         self.conn.commit()
         return 0
   
