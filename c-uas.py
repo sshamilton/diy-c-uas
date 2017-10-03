@@ -135,7 +135,7 @@ def getlocation(gpsdevice): #Pass in gps interface
                 logging.debug("GPS Text was: " + gpstext[3:8])
     except:
         logging.debug("GPS Not found.  ")
-        gpsdata = {'latitude':0, 'longitude': 0, 'timestamp':0, 'altitude':0}
+        gpsdata = {'latitude':'0', 'longitude': '0', 'timestamp':'0', 'altitude':'0'}
     return gpsdata
 
 def main():
