@@ -53,8 +53,8 @@ def scan(netdb, interface):
     """
 
     # Setup the wireless interface to listen on
-    wifi = Airodump(interface)
-    wifi.start()    
+    wifi = Airodump('mon0')
+    wifi.start()  
     scanres = wifi.tree
     logging.debug("Got tree")
     #Now add access points to db
@@ -67,7 +67,7 @@ def scan(netdb, interface):
         netdb.adddevice(bssid, wifi.tree[bssid]['ESSID'], wifi.tree[bssid]['Power'], 
             wifi.tree[bssid]['channel'], wifi.tree[bssid]['Privacy'])
         netdb.addlocation(bssid, gpsdata) #Get GPS coordinates.  This is a placeholder.        
-    
+    wifi.stop()
     return []
 
 
@@ -118,20 +118,24 @@ def getlocation(gpsdevice): #Pass in gps interface
     ser = serial.Serial()
     ser.port = gpsdevice
     ser.baudrate = 4800
-    ser.open()
-    logging.debug("Getting GPS Location")
-    gotlocation = False
-    while (gotlocation == False):
-        gpstext = str(ser.readline())
-        if (gpstext[3:8] == 'GPGGA'):
-            #Found the proper string, now get the lat long
-            #Probably needs a check for GPS lock.
-            gotlocation = True
-            g = nmea.GPGGA()
-            g.parse(gpstext)
-            gpsdata = {'latitude':g.latitude, 'longitude': g.longitude, 'timestamp':g.timestamp, 'altitude':g.antenna_altitude}
-        else:
-            logging.debug("GPS Text was: " + gpstext[3:8])
+    try:
+        ser.open()
+        logging.debug("Getting GPS Location")
+        gotlocation = False
+        while (gotlocation == False):
+            gpstext = str(ser.readline())
+            if (gpstext[3:8] == 'GPGGA'):
+                #Found the proper string, now get the lat long
+                #Probably needs a check for GPS lock.
+                gotlocation = True
+                g = nmea.GPGGA()
+                g.parse(gpstext)
+                gpsdata = {'latitude':g.latitude, 'longitude': g.longitude, 'timestamp':g.timestamp, 'altitude':g.antenna_altitude}
+            else:
+                logging.debug("GPS Text was: " + gpstext[3:8])
+    except:
+        logging.debug("GPS Not found.  ")
+        gpsdata = {'latitude':0, 'longitude': 0, 'timestamp':0, 'altitude':0}
     return gpsdata
 
 def main():
@@ -150,7 +154,7 @@ def main():
     #Setup database
     netdb = NetdevDb("c-uas") #Change this to the db name you wish to save things to.
     #Blacklist
-    netdb.blacklist('A0:14:3D:00:00:00')
+
     netdb.blacklist('60:60:1F:00:00:00')
     netdb.blacklist('F4:DD:9E:00:00:00')
     netdb.blacklist('D8:96:85:00:00:00')
@@ -161,7 +165,7 @@ def main():
     netdb.blacklist('90:03:B7:00:00:00')
     netdb.blacklist('00:26:7E:00:00:00')
     netdb.blacklist('00:12:1C:00:00:00')
-    interface = 'wlp0s20u3' #'wlp3s0' #Change this for the pi to something like wlan0
+    interface = 'wlan1' #'wlp3s0' #Change this for the pi to something like wlan0
     logging.debug("started scan")
     
 
@@ -170,7 +174,7 @@ def main():
         networks = scan(netdb, interface)
         print ("scan complete")
         netdb.deviceswithlocations() #Show what was scanned
-        deauth_targets(netdb, "wlp3s0")
+        deauth_targets(netdb, interface)
         #time.sleep(15)
         #targets = select_targets(networks)
         #if len(targets) > 0:
