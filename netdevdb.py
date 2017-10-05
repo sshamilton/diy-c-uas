@@ -31,7 +31,6 @@ class NetdevDb:
             c.execute("INSERT INTO enctypes VALUES('4', 'WEP')")
             c.execute("INSERT INTO enctypes VALUES('5', 'OPN')")
             self.conn.commit()
-
             print ("Database Created")
         
     def unixtime(self, dt):
@@ -82,8 +81,9 @@ class NetdevDb:
         else:
             print("Adding Device: ", bssid)
             c.execute("INSERT INTO netdevices(bssid, essid, power, channel, enc_type, created_at) VALUES('" + b + "', '" + e + "', " + str(p) + ", " + str(ch) + ", " + str(enctype) + ", " + str(currenttime) + ")")
-            self.conn.commit() 
+            #self.conn.commit() 
             return 0
+        self.conn.commit()
   
 
     def addlocation(self, bssid, gpsdata):
@@ -100,7 +100,6 @@ class NetdevDb:
         c.execute("INSERT INTO locations(bssid, latitude, longitude, altitude, created_at) VALUES('" + b + "', " + str(gpsdata['latitude']) + ", " + str(gpsdata['longitude']) + ", " + str(gpsdata['altitude']) + ", " + gpsdata['timestamp'] + ")")
         self.conn.commit()
         return 0
-  
 
     def blacklist(self, bssid):
         currenttime = self.unixtime(datetime.datetime.now())
@@ -129,7 +128,7 @@ class NetdevDb:
             bssid = row[1]
             bssid = bssid[0:2] + ":" + bssid[2:4] + ":" + bssid[4:6] + ":"+ bssid[6:8] + ":"+ bssid[8:10] + ":"+ bssid[10:12]
             blist.append({'bssid': bssid, 'channel': row[2]})
-            
+          
         return blist
 
     def deviceswithlocations(self):

