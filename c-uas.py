@@ -165,7 +165,7 @@ def main():
     netdb.blacklist('90:03:B7:00:00:00')
     netdb.blacklist('00:26:7E:00:00:00')
     netdb.blacklist('00:12:1C:00:00:00')
-    interface = 'wlan1' #'wlp3s0' #Change this for the pi to something like wlan0
+    interface = 'wlan0' #'wlp3s0' #Change this for the pi to something like wlan0
     logging.debug("started scan")
     
 

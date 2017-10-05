@@ -80,6 +80,7 @@ class NetdevDb:
             c.execute("UPDATE netdevices set active = 1 where bssid= '" + b + "'")
             return 1
         else:
+            print("Adding Device: ", bssid)
             c.execute("INSERT INTO netdevices(bssid, essid, power, channel, enc_type, created_at) VALUES('" + b + "', '" + e + "', " + str(p) + ", " + str(ch) + ", " + str(enctype) + ", " + str(currenttime) + ")")
             self.conn.commit() 
             return 0
