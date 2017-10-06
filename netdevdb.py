@@ -86,6 +86,55 @@ class NetdevDb:
         self.conn.commit()
   
 
+#For speed add all devices at once.
+    def adddevices(self, wifitree, gpsdata):
+        currenttime = self.unixtime(datetime.datetime.now())
+	    for bssid in wifi.tree:
+        #    netdb.adddevice(bssid, wifi.tree[bssid]['ESSID'], wifi.tree[bssid]['Power'], 
+        #        wifi.tree[bssid]['channel'], wifi.tree[bssid]['Privacy'])
+            if (len(bssid) == 17):
+                #Strip out colons
+                b = bssid.replace(":","")
+            else:
+                print("BSSID incorrect")
+                return 1 
+            if (len(wifi.tree[bssid]['ESSID']) < 256):
+                e = wifi.tree[bssid]['ESSID']
+            else:
+                print("ESSID too long.")
+                return 1
+            p = int(wifi.tree[bssid]['Power'])
+            ch = int(wifi.tree[bssid]['channel'])
+            encryption = wifi.tree[bssid]['Privacy']
+            if (encryption == "None"):
+                enctype = 1
+            elif (encryption == "WPA"):
+                enctype = 2
+            elif (encryption == "WPA2"):
+                enctype = 3
+            elif (encryption == "WEP"):
+                enctype = 4
+            elif (encryption == "OPN"):
+                enctype = 5
+            else:
+                enctype = 0 #Default if none of the above
+                print ("Warning undefined enc: ", encryption)
+            #Check if bssid exists
+            c = self.conn.cursor()
+            c.execute("SELECT * from netdevices WHERE bssid = '" + b +"'")
+#Need to add GPS in here.  
+            if (c.fetchone() is not None):
+                print ("Device exists, setting active")
+                c.execute("UPDATE netdevices set active = 1 where bssid= '" + b + "'")
+                return 1
+            else:
+                print("Adding Device: ", bssid)
+                c.execute("INSERT INTO netdevices(bssid, essid, power, channel, enc_type, created_at) VALUES('" + b + "', '" + e + "', " + str(p) + ", " + str(ch) + ", " + str(enctype) + ", " + str(currenttime) + ")")
+                #self.conn.commit() 
+                return 0
+                #self.addlocation(bssid, gpsdata) 
+            self.conn.commit()
+
     def addlocation(self, bssid, gpsdata):
         #Should we validate the BSSID exists in netdev? 
         #Should we only insert if location is significantly different?

@@ -70,11 +70,12 @@ def scan(netdb, interface, loopscan):
                 print("Scanres = ", scanres)
                 noresults = False
         gpsdata = getlocation('/dev/ttyUSB1') #Change this to the GPS port
+        netdb.adddevices(scanres, gpsdata)
         #netdb.mark_inactive()
-        for bssid in wifi.tree:
-            netdb.adddevice(bssid, wifi.tree[bssid]['ESSID'], wifi.tree[bssid]['Power'], 
-                wifi.tree[bssid]['channel'], wifi.tree[bssid]['Privacy'])
-            netdb.addlocation(bssid, gpsdata) #Get GPS coordinates.  This is a placeholder.        
+        #for bssid in wifi.tree:
+        #    netdb.adddevice(bssid, wifi.tree[bssid]['ESSID'], wifi.tree[bssid]['Power'], 
+        #        wifi.tree[bssid]['channel'], wifi.tree[bssid]['Privacy'])
+        #    netdb.addlocation(bssid, gpsdata) #Get GPS coordinates.  This is a placeholder.        
         wifi.stop()
         if (loopscan):
             loopthis = True
